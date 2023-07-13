@@ -30,6 +30,7 @@ def MyDataset(path, model):
 	edge_e = []
 	data_thre = 1000000
 
+	# Step1: 数据集基础信息的统计
 	for out_loop in range(1):
 		f = open(path, 'r')
 
@@ -60,12 +61,13 @@ def MyDataset(path, model):
 			if not (temp[4] in edgeType_map.keys()):
 				edgeType_map[temp[4]] = edgeType_cnt
 				edgeType_cnt += 1
-
 			temp[4] = edgeType_map[temp[4]]
+			
 			edge_s.append(temp[0])
 			edge_e.append(temp[2])
 			provenance.append(temp)
 
+	# Step2: 将统计出的基础信息写入文件保存
 	f_train_feature = open('../models/feature.txt', 'w')
 	for i in edgeType_map.keys():
 		f_train_feature.write(str(i)+'\t'+str(edgeType_map[i])+'\n')
@@ -77,18 +79,24 @@ def MyDataset(path, model):
 	feature_num = edgeType_cnt
 	label_num = nodeType_cnt
 
+	
+	# Step3: 构造节点的特征
 	x_list = []
 	y_list = []
 	train_mask = []
 	test_mask = []
+
+	# 初始化节点特征均为0，代表初始没有边连接到节点
 	for i in range(node_cnt):
 		temp_list = []
-		for j in range(feature_num*2):
+		for j in range(feature_num*2):  # 节点特征维度为边数目 * 2，前半部分为指向节点的边的分布，后半部分为源于节点的边的分布
 			temp_list.append(0)
 		x_list.append(temp_list)
-		y_list.append(0)
+		y_list.append(0)	# 节点对应的标签为节点的类别
 		train_mask.append(True)
 		test_mask.append(True)
+
+	# 遍历溯源图数据，按上述规则构造节点特征
 	for temp in provenance:
 		srcId = temp[0]
 		srcType = temp[1]
@@ -102,9 +110,11 @@ def MyDataset(path, model):
 
 	x = torch.tensor(x_list, dtype=torch.float)	
 	y = torch.tensor(y_list, dtype=torch.long)
+	# mask作用暂时未知
 	train_mask = torch.tensor(train_mask, dtype=torch.bool)
 	test_mask = train_mask
 	edge_index = torch.tensor([edge_s, edge_e], dtype=torch.long)
-	data1 = Data(x=x, y=y,edge_index=edge_index, train_mask=train_mask, test_mask = test_mask)
+	# 按照pyg要求的格式构造x, y, edge_index，传入到Data()类中
+	data1 = Data(x=x, y=y, edge_index=edge_index, train_mask=train_mask, test_mask=test_mask)
 	feature_num *= 2
-	return [data1], feature_num, label_num,0,0
+	return [data1], feature_num, label_num, 0, 0

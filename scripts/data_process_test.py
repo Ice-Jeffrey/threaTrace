@@ -45,8 +45,9 @@ def MyDatasetA(path, model):
 	ground_truth = {}
 	for line in f_gt:
 		ground_truth[line.strip('\n')] = 1
-
 	f_gt.close()
+	
+	# 将uuid映射到节点id
 	node_cnt = 0
 	nodeType_cnt = 0
 	edgeType_cnt = 0
@@ -55,11 +56,11 @@ def MyDatasetA(path, model):
 	edgeType_map = {}
 	edge_s = []
 	edge_e = []
-	adj = {}
-	adj2 = {}
+	adj = {}	# 指向节点的邻接表
+	adj2 = {}	# 节点指向的邻接表
 	data_thre = 1000000
-	fw = open('groundtruth_nodeId.txt', 'w')
-	fw2 = open('id_to_uuid.txt', 'w')
+	fw = open('groundtruth_nodeId.txt', 'w')	# 异常的node_id
+	fw2 = open('id_to_uuid.txt', 'w')	# 节点uuid与node_id的映射
 	nodeId_map = {}
 	cnt = 0
 	nodeA = []
@@ -94,11 +95,14 @@ def MyDatasetA(path, model):
 					nodeA.append(node_cnt)
 				node_cnt += 1
 			temp[2] = nodeId_map[temp[2]]		
+			
 			temp[1] = label_map[temp[1]]
 			temp[3] = label_map[temp[3]]
 			temp[4] = feature_map[temp[4]]
+			
 			edge_s.append(temp[0])
 			edge_e.append(temp[2])
+			
 			if temp[2] in adj.keys():
 				adj[temp[2]].append(temp[0])
 			else:
@@ -111,6 +115,8 @@ def MyDatasetA(path, model):
 		f.close()
 	fw.close()
 	fw2.close()
+	
+	# 构造节点的特征
 	x_list = []
 	y_list = []
 	train_mask = []
@@ -140,17 +146,18 @@ def MyDatasetA(path, model):
 	train_mask = torch.tensor(train_mask, dtype=torch.bool)
 	test_mask = torch.tensor(test_mask, dtype=torch.bool)
 	edge_index = torch.tensor([edge_s, edge_e], dtype=torch.long)
-	data1 = Data(x=x, y=y,edge_index=edge_index, train_mask=train_mask, test_mask = test_mask)
+	data1 = Data(x=x, y=y, edge_index=edge_index, train_mask=train_mask, test_mask=test_mask)
 	feature_num *= 2
-	neibor = set()
-	_neibor = {}
+	
+	neibor = set()	# 异常节点2-hop节点的集合
+	_neibor = {}	# 节点前向2-hop之内的异常节点列表
 	for i in nodeA:
 		neibor.add(i)
 		if not i in _neibor.keys():
 			templ = []
 			_neibor[i] = templ
 		if not i in _neibor[i]:
-			_neibor[i].append(i)		
+			_neibor[i].append(i)	# 默认异常节点自己指向自己？	
 		if i in adj.keys():
 			for j in adj[i]:
 				neibor.add(j)
